@@ -14,10 +14,21 @@ from dotenv import load_dotenv
 import os
 from fastapi import FastAPI
 from pydantic import BaseModel
+from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
 memory = MemorySaver()
+
+app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 llm = AzureChatOpenAI(
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
@@ -346,8 +357,6 @@ graph = builder.compile(checkpointer=memory)
 #         print(f"User:{user_input}")
 #         stream_graph_events(user_input)
 #         break
-
-app = FastAPI()
 
 class ChatInput(BaseModel):
     messages : list[str]
