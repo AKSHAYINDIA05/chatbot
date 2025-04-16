@@ -10,17 +10,23 @@ from bson import ObjectId
 from datetime import datetime
 from langgraph.checkpoint.memory import MemorySaver
 from typing import Optional
+from dotenv import load_dotenv
+import os
+from fastapi import FastAPI
+from pydantic import BaseModel
+
+load_dotenv()
 
 memory = MemorySaver()
 
 llm = AzureChatOpenAI(
-    api_key="7rpLSsf8sCoqa99RYfHc8Rrtq6NHMwNSaRNmDWe6P4jOqQLhu9NdJQQJ99BCACi0881XJ3w3AAAAACOG77t4",
-    azure_endpoint="https://zuber-m7vtkl7s-japaneast.cognitiveservices.azure.com/",
+    api_key=os.getenv("AZURE_OPENAI_API_KEY"),
+    azure_endpoint=os.getenv("AZURE_OPENAI_API_ENDPOINT"),
     model="gpt-4o",
-    api_version="2025-01-01-preview"
+    api_version=os.getenv("AZURE_OPENAI_API_VERSION")
 )
 
-client = MongoClient("mongodb+srv://akshaymww:PE2YYynnqxZhW5qK@chatbotcluster.tavncb1.mongodb.net/?retryWrites=true&w=majority&appName=ChatBotCluster")
+client = MongoClient(os.getenv("MONGO_URL"))
 db = client["sttribe"]
 events_collection = db["events"]
 bookings_collection = db["bookings"]
@@ -321,22 +327,44 @@ builder.add_conditional_edges(
 builder.add_edge("tools", "assistant")
 graph = builder.compile(checkpointer=memory)
 
-config = {
-    "configurable":{
-        "thread_id":1
+# config = {
+#     "configurable":{
+#         "thread_id":1
+#     }
+# }
+
+# def stream_graph_events(user_input):
+#     response = graph.invoke({"messages":[HumanMessage(content=user_input)]}, config)
+#     print(f"Assistant : {response['messages'][-1].content}")
+
+# while True:
+#     try:
+#         user_input = input("User:")
+#         stream_graph_events(user_input)
+#     except:
+#         user_input = "Hello"
+#         print(f"User:{user_input}")
+#         stream_graph_events(user_input)
+#         break
+
+app = FastAPI()
+
+class ChatInput(BaseModel):
+    messages : list[str]
+    thread_id : str
+
+@app.post("/chat")
+async def chat(input:ChatInput):
+    config = {
+        "configurable":{
+            "thread_id":input.thread_id
+        }
     }
-}
+    response = await graph.ainvoke(
+        {
+            "messages":input.messages
+        },
+        config=config
+    )
+    return response['messages'][-1].content
 
-def stream_graph_events(user_input):
-    response = graph.invoke({"messages":[HumanMessage(content=user_input)]}, config)
-    print(f"Assistant : {response['messages'][-1].content}")
-
-while True:
-    try:
-        user_input = input("User:")
-        stream_graph_events(user_input)
-    except:
-        user_input = "Hello"
-        print(f"User:{user_input}")
-        stream_graph_events(user_input)
-        break
