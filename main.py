@@ -20,6 +20,8 @@ load_dotenv()
 
 memory = MemorySaver()
 
+app = FastAPI()
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -355,8 +357,6 @@ graph = builder.compile(checkpointer=memory)
 #         print(f"User:{user_input}")
 #         stream_graph_events(user_input)
 #         break
-
-app = FastAPI()
 
 class ChatInput(BaseModel):
     messages : list[str]
